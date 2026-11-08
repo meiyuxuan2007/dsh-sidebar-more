@@ -1,0 +1,25 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pack
+        run: npm pack
+      - name: Fix tarball name
+        run: mv ./*.tgz ./plugin.tgz
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: plugin.tgz
+          generate_release_notes: true

@@ -1,0 +1,48 @@
+{
+  "name": "dsh-sidebar-more",
+  "version": "0.2.0",
+  "description": "把左侧栏的插件面板入口收进「更多」菜单：默认收起第三方插件行，可从菜单随时打开，折叠状态跨刷新保留 / Fold plugin panel entries on the left sidebar into the More menu",
+  "license": "MIT",
+  "author": "梅钰轩 <meiyuxuans@foxmail.com> (https://github.com/meiyuxuan2007)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/meiyuxuan2007/dsh-sidebar-more.git"
+  },
+  "homepage": "https://github.com/meiyuxuan2007/dsh-sidebar-more#readme",
+  "bugs": {
+    "url": "https://github.com/meiyuxuan2007/dsh-sidebar-more/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "sidebar",
+    "navigation",
+    "ui"
+  ],
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  }
+}
