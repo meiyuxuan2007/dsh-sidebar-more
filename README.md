@@ -1,13 +1,13 @@
 # dsh-sidebar-more
 
-把左侧栏的面板入口收进「更多」菜单，给下方的工作区与会话列表腾出高度。
+把左侧栏的面板入口按需收进「更多」菜单，给下方的工作区与会话列表腾出高度。安装后不预设折叠，现有布局一行不动。
 
 ## 功能
 
-- 除平台硬锁的「插件」外，所有面板入口都能收起，包括技能、归档会话、自动化任务；
-- 首次安装默认收起：任务看板、QQ 机器人、上下文洞察、SSH，其余保持可见；
+- 除平台硬锁的「插件」外，所有面板入口都能收起，包括宿主自带的技能、归档会话、自动化任务；
+- 首次安装不预设折叠：现有入口原样留在侧栏，在「更多」里点「收起『X』」才收；
 - 「更多」菜单里可以打开或收起任一面板，「全部放回侧栏」一键还原；
-- 「新插件自动收进更多」控制以后新装的插件是否默认收起（默认开）；
+- 「新插件自动收进更多」控制之后新出现的入口是否自动收起（默认开）；
 - 选择存在 `localStorage`，刷新页面、重启客户端都保留。
 
 ## 安装
@@ -18,7 +18,7 @@ dsh plugin add dsh-sidebar-more
 
 插件页「安装」输入框填包名同样可以，也接受 Git 地址、tgz 与本地绝对路径。
 
-要求：dsh Web 客户端；Node.js ≥ 22。
+要求：dsh 客户端 ≥ 0.2.1-rc.3 且 < 0.3.0（带 Web 界面）；Node.js ≥ 22。
 
 ## 它改了什么、没改什么
 
@@ -34,19 +34,21 @@ dsh plugin add dsh-sidebar-more
 
 ```json
 {
-  "folded": ["dsh-taskboard", "im-qqbot", "dsh-context", "ssh"],
+  "folded": ["some-panel-id"],
   "unfolded": [],
   "autoFoldNew": true,
-  "seen": ["plugins", "skills-manager", "archived-sessions", "dsh-taskboard", "…"]
+  "seen": ["plugins", "some-panel-id", "…"],
+  "seededAt": 1763200000000
 }
 ```
 
 - `folded`：显式收起的面板 id（生效依据）；
-- `unfolded`：显式放回过的 id，用于首次播种时不要把它又收回去；
-- `seen`：本插件见过的全部面板 id，用来区分「新装的插件」与「老面板」；
-- `autoFoldNew`：新出现的面板是否自动进 `folded`。
+- `unfolded`：显式放回过的 id，记下用户的明确选择；
+- `seen`：本插件见过的全部面板 id，用来区分「之后新出现的入口」与「老面板」；
+- `autoFoldNew`：之后新出现的入口是否自动进 `folded`；
+- `seededAt`：首轮播种时间戳，用于下面的宽限窗口。
 
-首轮（`seen` 为空）只播种一次默认名单，之后完全以 `folded` 为准，不覆盖老用户的选择；`plugins` 永不收起。清空这个键即恢复默认。
+首轮（`seen` 为空）只记录面板集合与时间戳，**不折叠任何入口**；此后完全以 `folded` 为准，不覆盖老用户的选择。客户端插件是按需加载的，首轮 15 秒内晚到注册的入口只记进 `seen`、不自动收起，避免把启动时的批次差异当成新插件。`plugins` 永不收起。清空这个键即恢复默认。
 
 另有一条诊断记录 `localStorage["dsh.sidebar-more.lastpass"]`：`{at, panels, rows, navFound, applied, hidden[], visibility}`。排查「看着没生效」时直接读它。
 
@@ -62,6 +64,13 @@ dsh plugin add dsh-sidebar-more
 - 全链路 fail-open：行数与面板数不一致，或任一 `aria-label` 对不上，就整轮放弃，绝不隐藏错行。
 
 ## 变更记录
+
+### 0.2.1
+
+- 去掉写死的首轮默认折叠名单：首次安装不再预设收起任何入口，现有侧栏布局一行不动；
+- 新增 `seededAt` 与 15 秒宽限窗口：客户端插件按需加载，首轮晚到注册的入口只记进 `seen`，不会被误判成「新装插件」自动收起；
+- 老用户的 `folded` / `unfolded` / `autoFoldNew` 逐字段保持不变；
+- 新增 `engines.dsh`（`>=0.2.1-rc.3 <0.3.0`），插件市场不再标记「未声明宿主版本要求」。
 
 ### 0.2.0
 
@@ -86,14 +95,14 @@ MIT
 
 ## English
 
-Fold third-party plugin entries on the left sidebar into a "More" menu and give the workspace and session list their height back.
+Fold left-sidebar panel entries into a "More" menu on demand and give the workspace and session list their height back. Nothing is folded on install, so your current layout stays as it is.
 
 ### Features
 
-- Every panel entry except the hard-locked "Plugins" one can be folded, including Skills, Archived sessions and Automation;
-- First install folds Taskboard, QQ Bot, Context Insights and SSH by default;
+- Every panel entry except the hard-locked "Plugins" one can be folded, including the built-in Skills, Archived sessions and Automation;
+- First install folds nothing: existing entries stay where they are until you pick "Hide 'X' from sidebar" in the More menu;
 - Open or fold any panel from the More menu, or restore everything with one click;
-- "Auto-fold new plugins" controls whether plugins installed later are folded by default;
+- "Auto-hide new plugin entries" controls whether entries that show up later are folded automatically;
 - The choice lives in `localStorage` and survives reloads and restarts.
 
 ### Install
@@ -104,7 +113,7 @@ dsh plugin add dsh-sidebar-more
 
 The install field in the dsh plugin page accepts the same value, plus a Git address, a tarball, or an absolute local path.
 
-Requires a dsh client with the Web UI and Node.js ≥ 22.
+Requires dsh client ≥ 0.2.1-rc.3 and < 0.3.0 with the Web UI, and Node.js ≥ 22.
 
 ### What it changes
 

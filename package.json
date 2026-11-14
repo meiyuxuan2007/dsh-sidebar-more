@@ -1,7 +1,7 @@
 {
   "name": "dsh-sidebar-more",
-  "version": "0.2.0",
-  "description": "把左侧栏的插件面板入口收进「更多」菜单：默认收起第三方插件行，可从菜单随时打开，折叠状态跨刷新保留 / Fold plugin panel entries on the left sidebar into the More menu",
+  "version": "0.2.1",
+  "description": "把左侧栏的面板入口按需折叠进「更多」菜单，为工作区与会话列表腾出空间，折叠状态跨刷新保留 / Folds left-sidebar panel entries into a More menu and keeps the folded state across reloads",
   "license": "MIT",
   "author": "梅钰轩 <meiyuxuans@foxmail.com> (https://github.com/meiyuxuan2007)",
   "repository": {
@@ -33,7 +33,11 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22",
+    "dsh": ">=0.2.1-rc.3 <0.3.0"
+  },
+  "scripts": {
+    "test": "node --test test/"
   },
   "dsh": {
     "bundle": {
