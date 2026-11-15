@@ -61,9 +61,16 @@ dsh plugin add dsh-sidebar-more
 - 客户端半边 `lib/client.js` 手写 `window.__ModuleLoader__.load({ id, factory })`，只依赖平台冻结模块 `react`、`react/jsx-runtime`、`@deepseek-ai/dsh-client-ui-primitives`；
 - 面板清单来自 `ctx.slots.entriesOfSlot("sidebar.panellist")`（与侧栏同步逻辑同构：按 `order` 升序），label 走 `resolveSlotLabel` 语义；
 - 折叠同步的触发点：启动（80/300/900/2400 ms 四次重试）、`ctx.slots.subscribe("sidebar.panellist")`、`body` 的 `childList` MutationObserver（rAF 合并）、`visibilitychange`、`focus` / `pageshow`；
-- 全链路 fail-open：行数与面板数不一致，或任一 `aria-label` 对不上，就整轮放弃，绝不隐藏错行。
+- 按行识别，不按按钮计数：每行只取「主按钮」（带 `aria-label`、不带 `aria-haspopup`），新增的「取消固定」等次要按钮不会干扰；面板与 DOM 行按 `aria-label` 匹配，不依赖行序；
+- 全链路 fail-open：一行都对不上面板清单时整轮放弃；个别行缺失时其余行照常处理，绝不隐藏错行。
 
 ## 变更记录
+
+### 0.2.2
+
+- 适配 dsh 0.2.2 的侧栏结构：面板行在展开态会多渲染一个「取消固定」按钮，旧版「按钮数必须等于面板数」的校验因此恒失败、收起完全失效；
+- 改为按行取主按钮识别、按 aria-label 匹配面板，不再依赖按钮数量与行序；个别行缺失时其余行照常收起；
+- 诊断记录新增 matched（匹配到几行）与 navLabel（选中的导航栏 aria-label），便于排查 DOM 变化。
 
 ### 0.2.1
 

@@ -77,15 +77,25 @@ function createDocument() {
     }
   };
   doc.__wrappers = wrappers;
-  doc.__mount = (panels) => {
+  doc.__mount = (panels, options) => {
+    const opts = options || {};
     for (const old of navs) old.isConnected = false;
     const nav = createNode("nav");
+    nav.setAttribute("aria-label", "panels.label");
     for (const panel of panels) {
+      if (Array.isArray(opts.skipIds) && opts.skipIds.includes(panel.id)) continue;
       const wrapper = createNode("div");
       const button = createNode("button");
       button.setAttribute("aria-label", panel.label || panel.id);
       wrapper.children.push(button);
       button.parentElement = wrapper;
+      // dsh 0.2.2 起：展开态每行额外渲染一个「取消固定」按钮（也带 aria-label）。
+      if (opts.unpin) {
+        const unpin = createNode("button");
+        unpin.setAttribute("aria-label", `Unpin ${panel.label || panel.id}`);
+        wrapper.children.push(unpin);
+        unpin.parentElement = wrapper;
+      }
       wrapper.parentElement = nav;
       nav.children.push(wrapper);
       wrappers.push(wrapper);
@@ -101,6 +111,22 @@ function createDocument() {
     nav.children.push(moreWrapper);
 
     navs.length = 0;
+    // 干扰项：外层容器 nav（直接子元素只有品牌/新会话之类的控件，不是面板行）。
+    if (opts.decoyNav) {
+      const outer = createNode("nav");
+      for (const label of ["New session", "Search"]) {
+        const wrapper = createNode("div");
+        const button = createNode("button");
+        button.setAttribute("aria-label", label);
+        wrapper.children.push(button);
+        button.parentElement = wrapper;
+        wrapper.parentElement = outer;
+        outer.children.push(wrapper);
+      }
+      outer.children.push(nav);
+      nav.parentElement = outer;
+      navs.push(outer);
+    }
     navs.push(nav);
     return nav;
   };
@@ -422,7 +448,7 @@ test("平台锁：plugins 永不设置折叠，也不出现在 hidden 里", asyn
   assert.deepEqual(hiddenIds(env), [], "即便 folded 里写了 plugins，也不得隐藏");
 });
 
-test("fail-open：行标签对不上时整轮放弃，不动 DOM", async () => {
+test("fail-open：所有行标签都对不上时整轮放弃，不动 DOM", async () => {
   const env = createEnv();
   env.storage.set(
     STORAGE_KEY,
@@ -436,14 +462,85 @@ test("fail-open：行标签对不上时整轮放弃，不动 DOM", async () => {
   );
   const panels = [panel("plugins", 0, "Plugins"), panel("skills-manager", 2, "Skills")];
   const nav = env.document.__mount(panels);
-  // 把第二行的标签改掉，模拟宿主改了文案 / 结构
+  // 两行标签都改掉，模拟宿主彻底改了文案 / 结构
   const buttons = nav.querySelectorAll("button");
+  buttons[0].setAttribute("aria-label", "Plugins (renamed)");
   buttons[1].setAttribute("aria-label", "Skills (renamed)");
   mount(env, panels);
   await env.flush();
 
-  assert.deepEqual(hiddenIds(env), [], "校验不通过时不得隐藏任何行");
+  assert.deepEqual(hiddenIds(env), [], "一行都对不上时不得隐藏任何行");
   assert.equal(readDiagnostics(env).applied, false);
+  assert.equal(readDiagnostics(env).matched, 0);
+});
+
+test("dsh 0.2.2 起每行多一个「取消固定」按钮：行数仍按行算，收起照常生效", async () => {
+  const env = createEnv();
+  env.storage.set(
+    STORAGE_KEY,
+    JSON.stringify({
+      folded: ["skills-manager"],
+      unfolded: [],
+      autoFoldNew: true,
+      seen: ["plugins", "skills-manager", "dsh-taskboard"],
+      seededAt: T0 - 86400000
+    })
+  );
+  const panels = [panel("plugins", 0, "Plugins"), panel("skills-manager", 2, "Skills"), panel("dsh-taskboard", 10, "Taskboard")];
+  env.document.__mount(panels, { unpin: true });
+  mount(env, panels);
+  await env.flush();
+
+  assert.deepEqual(hiddenIds(env), ["Skills"], "多出的取消固定按钮不应让整轮校验失败");
+  const diag = readDiagnostics(env);
+  assert.equal(diag.rows, 3, "rows 应按行数算（每行两个按钮也算一行）");
+  assert.equal(diag.matched, 3);
+  assert.equal(diag.applied, true);
+});
+
+test("外层容器 nav 干扰：应选中真正承载面板行的 nav", async () => {
+  const env = createEnv();
+  env.storage.set(
+    STORAGE_KEY,
+    JSON.stringify({
+      folded: ["skills-manager"],
+      unfolded: [],
+      autoFoldNew: true,
+      seen: ["plugins", "skills-manager"],
+      seededAt: T0 - 86400000
+    })
+  );
+  const panels = [panel("plugins", 0, "Plugins"), panel("skills-manager", 2, "Skills")];
+  env.document.__mount(panels, { decoyNav: true });
+  mount(env, panels);
+  await env.flush();
+
+  assert.deepEqual(hiddenIds(env), ["Skills"]);
+  assert.equal(readDiagnostics(env).navLabel, "panels.label");
+});
+
+test("个别面板行缺失（宿主隐藏/未渲染）时：其余行仍按 label 正常收起", async () => {
+  const env = createEnv();
+  env.storage.set(
+    STORAGE_KEY,
+    JSON.stringify({
+      folded: ["skills-manager", "dsh-taskboard"],
+      unfolded: [],
+      autoFoldNew: true,
+      seen: ["plugins", "skills-manager", "dsh-taskboard"],
+      seededAt: T0 - 86400000
+    })
+  );
+  const panels = [panel("plugins", 0, "Plugins"), panel("skills-manager", 2, "Skills"), panel("dsh-taskboard", 10, "Taskboard")];
+  env.document.__mount(panels, { skipIds: ["dsh-taskboard"] });
+  mount(env, panels);
+  await env.flush();
+
+  assert.deepEqual(hiddenIds(env), ["Skills"], "缺行不应导致整轮放弃");
+  const diag = readDiagnostics(env);
+  assert.equal(diag.rows, 2);
+  assert.equal(diag.matched, 2);
+  assert.equal(diag.applied, true);
 });
 
 test("卸载：已隐藏的行全部还原", async () => {
